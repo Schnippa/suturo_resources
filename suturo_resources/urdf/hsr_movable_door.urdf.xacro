@@ -66,5 +66,6 @@
       <child link="${name}_hinge"/>
     </joint>
 
+
   </macro>
 </robot>
