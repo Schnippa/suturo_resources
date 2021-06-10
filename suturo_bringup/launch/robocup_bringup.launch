@@ -6,7 +6,7 @@
   <arg name="publish_planning_hsr" default="true" />
 
   <arg name="publish_environment" default="true" />
-  <arg name="env_model_yaml" default="rw_lab_1.yaml" />
+  <arg name="env_model_yaml" default="gz_sim_rc_sim_2.yaml" />
 
   <arg name="show_rooms" default="true"/>
 
