@@ -79,10 +79,6 @@
            command="$(find xacro)/xacro --inorder 
                     '$(find hsrb_description)/robots/hsrb4s.urdf.xacro'"/>
   </group>
-
-  <group if="$(eval arg('suturo_rviz') == true)">
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find suturo_resources)/rviz_configs/suturo.rviz" />
-  </group>
   
   <node pkg="tf2_ros" type="buffer_server" name="tf_server" output="screen" />
 
