@@ -6,7 +6,7 @@
   <arg name="namespace" default="hsrb"/>
   <arg name="debug" default="false"/>
   <arg name="gui" default="true" />
-  <arg name="suturo_rviz" default="false"/>
+  <arg name="suturo_rviz" default="true"/>
   <arg name="gazebo_visualization" default="false" />
   <arg name="use_manipulation" default="true" />
   <arg name="use_navigation" default="true" />
@@ -18,19 +18,22 @@
   <arg name="paused" default="true" />
   <arg name="fast_physics" default="false" />
   <arg name="robot_name" default="$(optenv ROBOT_NAME hsrb)" />
+  <arg name="personal_name" default="" />
+  <arg unless="$(eval personal_name == '')" name="use_web" value="false"/>
+  <arg name="param_file" default="$(optenv HOME ~)/.ros/params.yaml"/>
 
   <arg unless="$(arg fast_physics)" name="world_suffix" value=""/>
   <arg     if="$(arg fast_physics)" name="world_suffix" value="_fast"/>
 
-  <arg name="world" default="empty.world" />
-  <arg name="map_name" default="empty/map.yaml" />
-  <arg name="gazebo" default="false" />
+  <arg name="world" default="robocup_demo_2_objects.world" />
+  <arg name="map_name" default="robocup_sim_master/robocup_demo_2.yaml" />
+  <arg name="gazebo" default="true" />
 
-  <arg name="map_server" default="true" />
+  <arg name="map_server" default="false" />
   <arg name="publish_planning_hsr" default="true" />
 
   <arg name="publish_environment" default="true" />
-  <arg name="env_model_yaml" default="rw_lab_1.yaml" />
+  <arg name="env_model_yaml" default="gz_sim_rc_sim_2.yaml" />
 
   <arg name="show_rooms" default="true"/>
 
@@ -44,8 +47,66 @@
   <arg name="robot_spawn_pose_z" default="0" />
   <arg name="robot_spawn_rotation" default="0" />
 
+  <group if="$(eval arg('gazebo') == true)">
+    <!--  prepare params.yaml(param command hack)   -->
+    <param name="$(arg namespace)/tmp" command="rosrun tmc_roslaunch_tools symboliclink $(arg param_file) $(find hsrb_common_launch)/params/empty_params.yaml"/>
+    <!--  gazebo  -->
+    <param name="/use_sim_time" value="true"/>
 
-  <group if="$(eval arg('run_snap_map') == true)">
+    <group>
+      <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="paused" value="$(arg paused)"/>
+        <arg name="use_sim_time" value="true"/>
+        <arg name="gui" value="$(arg gui)"/>
+        <arg name="debug" value="$(arg debug)"/>
+        <arg name="world_name" value="$(find suturo_resources)/gazebo_worlds/$(arg world)"/>
+      </include>
+    </group>
+
+    <include file="$(find hsrb_gazebo_bringup)/launch/include/hsrb_no_controllers.xml" pass_all_args="true"/>
+    <group ns="$(arg personal_name)/$(arg namespace)">
+      <rosparam command="load" file="$(find suturo_bringup)/config/hsrb_controller_config.yaml"/>
+      <rosparam command="load" file="$(find hsrb_gazebo_bringup)/params/hsrb_controller_config.yaml"/>
+      <param name="omni_base_controller/tf_prefix" value="$(arg personal_name)"/>
+      <param name="omni_base_controller/model_name" value="$(arg personal_name)/robot_description"/>
+      <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller arm_trajectory_controller head_trajectory_controller omni_base_controller --timeout 60"/>
+    </group>
+
+    <group>
+      <include file="$(find hsrb_gazebo_bringup)/launch/include/hsrb_sensor.xml" >
+        <arg name="namespace" value="$(arg namespace)" />
+        <arg name="personal_name" value="$(arg personal_name)" />
+      </include>
+    </group>
+
+    <group ns="/$(arg personal_name)">
+      <node name="talk_action_simulator" pkg="tmc_talk_action_simulator" type="talk_request_server"/>
+    </group>
+    <!--  common  -->
+    <include file="$(find hsrb_common_launch)/launch/hsrb_common.launch">
+      <arg name="namespace" value="$(arg namespace)"/>
+      <arg name="sim" value="true"/>
+      <arg name="use_manipulation" value="$(arg use_manipulation)"/>
+      <arg name="use_navigation" value="$(arg use_navigation)"/>
+      <arg name="use_perception" value="$(arg use_perception)"/>
+      <arg name="use_task" value="$(arg use_task)"/>
+      <arg name="use_teleop" value="$(arg use_teleop)"/>
+      <arg name="use_web" value="$(arg use_web)"/>
+      <arg name="map" value="$(find suturo_resources)/maps/$(arg map_name)"/>
+      <arg name="robot_name" value="$(arg robot_name)"/>
+      <arg name="personal_name" value="$(arg personal_name)"/>
+    </include>
+    <!--  load override parameters -->
+    <rosparam command="load" file="$(arg param_file)"/>
+  </group>
+
+  <group if="$(eval arg('gazebo') == false)">
+    <group if="$(eval arg('map_server') == true)">
+      <node name="map_server" pkg="map_server" type="map_server" args="$(find suturo_resources)/maps/$(arg map_name)" />
+    </group>
+  </group>
+
+    <group if="$(eval arg('run_snap_map') == true)">
     <node pkg="snap_map_icp" type="snap_map_icp" name="snap_map_icp" output="screen">
       <!-- remap topics for map and laser scans -->
       <remap from="~base_scan" to="/hsrb/base_scan_unlimited"/>
@@ -57,7 +118,7 @@
 
       <!-- defines minimum fitness for candidates for pose publishing -->
       <param name="icp_fitness_threshold" value="10"/>
-   
+
       <!-- accept only scans one second old or younger -->
       <param name="age_threshold" value="20"/>
       <param name="update_age_threshold" value="1"/>
@@ -81,23 +142,6 @@
       <!-- rate at which scans are taken -->
       <param name="scan_rate" value="4"/>
     </node>
-  </group>
-
-  <group if="$(eval arg('gazebo') == true)">
-    <include file="$(find hsrb_gazebo_launch)/launch/include/hsrb_gazebo_common.xml" pass_all_args="true" >
-      <arg name="map" default="$(find suturo_resources)/maps/$(arg map_name)" />
-      <arg name="world_name" value="$(find suturo_resources)/gazebo_worlds/$(arg world)" />
-      <arg name="robot_pos" value="-x $(arg robot_spawn_pose_x) -y $(arg robot_spawn_pose_y) -z $(arg robot_spawn_pose_z) -Y $(arg robot_spawn_rotation)"/>
-      <arg name="ground_truth_xyz_offset" value="0.0\ 0.0\ 0.0" />
-      <arg name="ground_truth_rpy_offset" value="0.0\ 0.0\ 0.0" />
-      <arg name="rviz" value = "false" />
-    </include>
-  </group>
-
-  <group if="$(eval arg('gazebo') == false)">
-    <group if="$(eval arg('map_server') == true)">
-      <node name="map_server" pkg="map_server" type="map_server" args="$(find suturo_resources)/maps/$(arg map_name)" />
-    </group>
   </group>
 
   <group if="$(eval arg('publish_planning_hsr') == true)">
