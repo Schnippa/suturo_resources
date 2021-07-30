@@ -17,7 +17,7 @@
   <arg name="use_laser_odom" default="true" />
   <arg name="paused" default="true" />
   <arg name="fast_physics" default="false" />
-  <arg name="robot_name" default="$(optenv ROBOT_NAME hsrb)" />
+  <arg name="robot_name" default="hsrb" />
   <arg name="personal_name" default="" />
   <arg unless="$(eval personal_name == '')" name="use_web" value="false"/>
   <arg name="param_file" default="$(optenv HOME ~)/.ros/params.yaml"/>
@@ -48,57 +48,44 @@
   <arg name="robot_spawn_rotation" default="0" />
 
   <group if="$(eval arg('gazebo') == true)">
-    <!--  prepare params.yaml(param command hack)   -->
-    <param name="$(arg namespace)/tmp" command="rosrun tmc_roslaunch_tools symboliclink $(arg param_file) $(find hsrb_common_launch)/params/empty_params.yaml"/>
-    <!--  gazebo  -->
-    <param name="/use_sim_time" value="true"/>
+       <arg unless="$(eval personal_name == '')" name="use_web" value="false"/>
 
-    <group>
-      <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="paused" value="$(arg paused)"/>
-        <arg name="use_sim_time" value="true"/>
-        <arg name="gui" value="$(arg gui)"/>
+      <!-- prepare params.yaml(param command hack)  -->
+      <param name="$(arg namespace)/tmp" command="rosrun tmc_roslaunch_tools symboliclink $(arg param_file) $(find hsrb_common_launch)/params/empty_params.yaml" />
+
+      <!-- gazebo -->
+      <include file="$(find hsrb_gazebo_bringup)/launch/hsrb_empty_world.launch">
         <arg name="debug" value="$(arg debug)"/>
-        <arg name="world_name" value="$(find suturo_resources)/gazebo_worlds/$(arg world)"/>
-      </include>
-    </group>
-
-    <include file="$(find hsrb_gazebo_bringup)/launch/include/hsrb_no_controllers.xml" pass_all_args="true"/>
-    <group ns="$(arg personal_name)/$(arg namespace)">
-      <rosparam command="load" file="$(find suturo_bringup)/config/hsrb_controller_config.yaml"/>
-      <rosparam command="load" file="$(find hsrb_gazebo_bringup)/params/hsrb_controller_config.yaml"/>
-      <param name="omni_base_controller/tf_prefix" value="$(arg personal_name)"/>
-      <param name="omni_base_controller/model_name" value="$(arg personal_name)/robot_description"/>
-      <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller wrist_roll_controller wrist_flex_controller arm_roll_controller arm_flex_controller arm_lift_controller head_pan_controller head_tilt_controller omni_base_controller --timeout 60"/>
-      <!--node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller arm_trajectory_controller head_trajectory_controller omni_base_controller -/-timeout 60"/-->
-    </group>
-
-    <group>
-      <include file="$(find hsrb_gazebo_bringup)/launch/include/hsrb_sensor.xml" >
         <arg name="namespace" value="$(arg namespace)" />
+        <arg name="fast_physics" value="$(arg fast_physics)" />
+        <arg name="gazebo_visualization" value="$(arg gazebo_visualization)" />
+        <arg name="use_laser_odom" value="$(arg use_laser_odom)" />
+        <arg name="paused" value="$(arg paused)" />
+        <arg name="world_name" value="$(find suturo_resources)/gazebo_worlds/$(arg world)" />
+        <arg name="robot_pos" value="-x $(arg robot_spawn_pose_x) -y $(arg robot_spawn_pose_y) -z $(arg robot_spawn_pose_z) -Y $(arg robot_spawn_rotation)" />
+        <arg name="gui" value="$(arg gui)"/>
+        <arg name="robot_name" value="$(arg robot_name)" />
+        <arg name="personal_name" value="$(arg personal_name)" />
+        <arg name="individual_controllers" value="true" />
+      </include>
+
+      <!-- common -->
+      <include file="$(find hsrb_common_launch)/launch/hsrb_common.launch">
+        <arg name="namespace" value="$(arg namespace)" />
+        <arg name="sim" value="true" />
+        <arg name="use_manipulation" value="$(arg use_manipulation)" />
+        <arg name="use_navigation" value="$(arg use_navigation)" />
+        <arg name="use_perception" value="$(arg use_perception)" />
+        <arg name="use_task" value="$(arg use_task)" />
+        <arg name="use_teleop" value="$(arg use_teleop)" />
+        <arg name="use_web" value="$(arg use_web)" />
+        <arg name="map" value="$(find suturo_resources)/maps/$(arg map_name)"/>
+        <arg name="robot_name" value="$(arg robot_name)" />
         <arg name="personal_name" value="$(arg personal_name)" />
       </include>
-    </group>
 
-    <group ns="/$(arg personal_name)">
-      <node name="talk_action_simulator" pkg="tmc_talk_action_simulator" type="talk_request_server"/>
-    </group>
-    <!--  common  -->
-    <include file="$(find hsrb_common_launch)/launch/hsrb_common.launch">
-      <arg name="namespace" value="$(arg namespace)"/>
-      <arg name="sim" value="true"/>
-      <arg name="use_manipulation" value="$(arg use_manipulation)"/>
-      <arg name="use_navigation" value="$(arg use_navigation)"/>
-      <arg name="use_perception" value="$(arg use_perception)"/>
-      <arg name="use_task" value="$(arg use_task)"/>
-      <arg name="use_teleop" value="$(arg use_teleop)"/>
-      <arg name="use_web" value="$(arg use_web)"/>
-      <arg name="map" value="$(find suturo_resources)/maps/$(arg map_name)"/>
-      <arg name="robot_name" value="$(arg robot_name)"/>
-      <arg name="personal_name" value="$(arg personal_name)"/>
-    </include>
-    <!--  load override parameters -->
-    <rosparam command="load" file="$(arg param_file)"/>
+      <!-- load override parameters-->
+      <rosparam command="load" file="$(arg param_file)" />
   </group>
 
   <group if="$(eval arg('gazebo') == false)">
