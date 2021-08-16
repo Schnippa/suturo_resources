@@ -165,4 +165,6 @@
   
   <node pkg="tf2_ros" type="buffer_server" name="tf_server" output="screen" />
 
+  <node pkg="suturo_bringup" type="init_joint_positions.py" name="init_joint_positions" />
+
 </launch>
