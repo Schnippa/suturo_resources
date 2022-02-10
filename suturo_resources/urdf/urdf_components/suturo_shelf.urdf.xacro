@@ -53,6 +53,14 @@
     </xacro:suturo_shelf_piece>
 
 
+    <!-- body (used for inside of) -->
+    <xacro:suturo_shelf_piece name="${name}:shelf_complete_body" parent="${name}:shelf_origin"
+      size_x="${size_x}" size_y="${size_y}" size_z="${size_z}">
+      <origin xyz="${size_x/2} ${size_y/2} ${size_z/2}" rpy="0 0 0"/>
+    </xacro:suturo_shelf_piece>
+    
+
+
 
     <xacro:macro name="shelf_floor_loop" params="floor_number">
         <xacro:suturo_shelf_piece name="${name}:shelf_floor_${floor_number}" parent="${name}:shelf_base_center"
